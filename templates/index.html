@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>分區宿舍檢查預約系統</title>
@@ -16,48 +16,39 @@
         .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
         
-        /* 注意事項區塊 */
         .notice-box { background-color: var(--warning-bg); border: 1px solid var(--warning-border); padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-        .notice-title { font-weight: bold; color: #d46b08; font-size: 1.1em; margin-bottom: 12px; display: flex; align-items: center; }
+        .notice-title { font-weight: bold; color: #d46b08; font-size: 1.1em; margin-bottom: 12px; }
         .notice-list { margin: 0; padding-left: 0; list-style: none; }
-        .notice-list li { margin-bottom: 10px; line-height: 1.5; font-size: 0.95em; color: #595959; text-align: justify; }
+        .notice-list li { margin-bottom: 10px; line-height: 1.5; font-size: 0.95em; color: #595959; }
         .notice-highlight { color: #cf1322; font-weight: bold; }
 
         .input-group { margin-bottom: 20px; display: flex; flex-direction: column; }
         .input-group label { font-weight: bold; margin-bottom: 8px; color: #34495e; }
-        .input-group input, .input-group select { padding: 10px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 1em; transition: border 0.3s; }
+        .input-group input, .input-group select { padding: 10px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 1em; }
         .input-group input:focus, .input-group select:focus { border-color: var(--primary-color); outline: none; }
         
         #slots_section { display: none; margin-top: 25px; }
         .section-title { font-weight: bold; color: #2c3e50; margin-bottom: 15px; font-size: 1.1em; border-left: 4px solid var(--primary-color); padding-left: 10px; }
         
-        /* 🚀 新增：日期分頁標籤列樣式 */
-        .date-tabs-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; background: #f1f3f5; padding: 10px; border-radius: 8px; }
-        .date-tab-btn { background: white; border: 1px solid #ccd1d9; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #434a54; transition: all 0.2s; }
-        .date-tab-btn:hover { background: #e6e9ed; }
+        .date-tabs-container { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; margin-bottom: 15px; background: #f1f3f5; padding: 10px; border-radius: 8px; -webkit-overflow-scrolling: touch; }
+        .date-tab-btn { background: white; border: 1px solid #ccd1d9; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #434a54; white-space: nowrap; }
         .date-tab-btn.active { background: #434a54; color: white; border-color: #434a54; }
 
-        /* 時段卡片牆 */
         .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .slot-card { position: relative; background: #f8f9fa; border: 2px solid #e6e9ed; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; user-select: none; }
-        .slot-card:hover:not(.disabled) { border-color: #aab2bd; background: #f1f3f5; }
+        .slot-card { position: relative; background: #f8f9fa; border: 2px solid #e6e9ed; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; user-select: none; }
         .slot-card input[type="checkbox"] { display: none; }
         .slot-time { font-size: 1.05em; font-weight: bold; color: #434a54; margin-bottom: 4px; }
         .slot-count { font-size: 0.85em; color: #a0a0a0; }
         
-        /* 被選中時的時間字卡顏色（質感亮橘色） */
         .slot-card.selected { background: #fff7e6; border-color: #ff9c6e; color: #d4380d; }
         .slot-card.selected .slot-time { color: #d4380d; }
-        .slot-card.selected .slot-count { color: #ff7a45; font-weight: bold; }
-        
         .slot-card.disabled { background: #e6e9ed; border-color: #ccd1d9; color: #95a5a6; cursor: not-allowed; opacity: 0.6; }
         .slot-card.disabled .slot-time { color: #7f8c8d; text-decoration: line-through; }
         .slot-badge-full { font-size: 0.75em; background: #7f8c8d; color: white; padding: 2px 6px; border-radius: 10px; display: inline-block; margin-top: 5px; }
 
         .footer-box { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
-        #count { margin: 0; font-weight: bold; font-size: 1.05em; color: #2c3e50; }
-        #submitBtn { background-color: var(--primary-color); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        #submitBtn:hover:not(:disabled) { background-color: var(--primary-hover); }
+        #count { margin: 0; font-weight: bold; color: #2c3e50; }
+        #submitBtn { background-color: var(--primary-color); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 1em; font-weight: bold; cursor: pointer; }
         #submitBtn:disabled { background-color: #ccd1d9; cursor: not-allowed; }
     </style>
 </head>
@@ -67,18 +58,12 @@
     <h2>📋 宿舍檢查時間預約</h2>
 
     <div class="notice-box">
-        <div class="notice-title">⚠️ 離宿辦理重要注意事項（請務必詳閱）</div>
+        <div class="notice-title">⚠️ 離宿辦理重要注意事項</div>
         <ul class="notice-list">
             <li>1️⃣ 填寫送出後，<span class="notice-highlight">只能更改一次</span>！</li>
             <li>2️⃣ 每個人一定要預約三次!</li>
-            <li>3️⃣ 選擇 <span class="notice-highlight">16週</span> 離宿請於 <span class="notice-highlight">5/31(日) 17:00前</span> 填完表單；選擇 <span class="notice-highlight">17或18週</span> 離宿請在 <span class="notice-highlight">6/7(日) 17:00前</span> 填完表單。</li>
-            <li>4️⃣ 填寫時間如樓長不行會私訊您更改時間（這不計算在只能更改一次的限制內）。</li>
-            <li>5️⃣ 離宿最晚時間只到 <span class="notice-highlight">6/28(日) 17:00前</span>。</li>
-            <li>6️⃣ 最早離宿時間是 <span class="notice-highlight">6/8(一) 13:00後</span>。</li>
-            <li>7️⃣ 要趕車、給家長載的同學請提早多留點時間預約檢查。若離宿當天檢查未通過，<span class="notice-highlight">必須打掃至通過才可離開，否則將扣取打掃部分的押金</span>。</li>
-            <li>8️⃣ 請不要當天傳訊息詢問樓長是否可以延遲檢查，一律不接受！（因現場繁忙可能無法即時讀取訊息）。</li>
-            <li>9️⃣ 廁所內部請使用科技海綿清潔（菜瓜布絕對刷不乾淨）。</li>
-            <li>🔟 科技海綿請勿用於房間地板，僅限用於廁所、浴室、洗手台，但請勿用鹽酸及菜瓜布<br><span class="notice-highlight">❗ 檢查時淋浴間、廁所、洗手台必須是全乾的❗</span></li>
+            <li>3️⃣ 第一次檢查在第三次檢查的前一週內，第二次在第三次的前兩天內。</li>
+            <li>❗ 檢查時淋浴間、廁所、洗手台必須是全乾的 ❗</li>
         </ul>
     </div>
 
@@ -120,9 +105,7 @@
         </div>
 
         <div id="slots_section">
-            <div class="section-title">選擇檢查時段 (請剛好挑選 3 個日期)</div>
-            
-            <p style="font-size: 0.9em; color: gray; margin-bottom: 5px;">📅 先點選日期，再勾選下方時間：</p>
+            <div class="section-title">選擇檢查時段 (請剛好挑選 3 個時段)</div>
             <div class="date-tabs-container" id="date_tabs_bar"></div>
             
             <div class="slots-grid">
@@ -130,11 +113,11 @@
                     {% set time_str = slot[0] %}
                     {% set max_limit = slot[1] %}
                     {% set slot_area = slot[2] %}
-                    {% set current_count = slot_counts.get(slot_area + '_' + time_str, 0) %}
+                    {% set current_count = slot_counts.get(slot_area ~ '_' ~ time_str, 0) %}
                     {% set is_full = current_count >= max_limit %}
                     
                     <div class="slot-card area-{{ slot_area }} {% if is_full %} disabled {% endif %}" 
-                         onclick="toggleCard(this)" data-rawtime="{{ time_str }}">
+                         onclick="toggleCard(this)" data-rawtime="{{ time_str }}" style="display: none;">
                         <input type="checkbox" class="time" value="{{ time_str }}" {% if is_full %} disabled {% endif %}>
                         <div class="slot-time js-time-display">{{ time_str }}</div>
                         <div class="slot-count">
@@ -164,7 +147,6 @@ function handleAreaChange() {
     const selectedArea = areaSelect.value;
     
     filterSlots();
-    
     jobSelect.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
     jobSelect.disabled = true;
 
@@ -174,26 +156,32 @@ function handleAreaChange() {
         return;
     }
     
-    const floorMatch = selectedArea.match(/\d+/);
-    if (!floorMatch) return;
-    const floorNum = floorMatch[0];
+    const floorNum = selectedArea.match(/\d+/)[0];
     
-    fetch(`/get_occupied_beds?area=${encodeURIComponent(selectedArea)}`)
+    fetch("/get_occupied_beds?area=" + encodeURIComponent(selectedArea))
     .then(r => r.json())
     .then(data => {
-        const occupiedBeds = data.occupied; 
+        const occupiedBeds = data && data.occupied ? data.occupied : []; 
         let htmlStr = '<option value="">-- 請選擇您的房號床號 --</option>';
         
         for (let r = 1; r <= 12; r++) {
-            let roomStr = String(r).padStart(2, '0');
-            let roomNo = `${floorNum}${roomStr}`; 
-            
+            let roomNo = `${floorNum}${String(r).padStart(2, '0')}`; 
             ['A', 'B', 'C', 'D'].forEach(letter => {
                 let fullBedCode = `${roomNo}${letter}`; 
                 if (!occupiedBeds.includes(fullBedCode)) {
-                    htmlStr += `<option value="${fullBedCode}">${fullBedCode}</option>`;
+                    htmlStr += `<option value="${fullBedCode}">${fullBedCode} 床位</option>`;
                 }
             });
+        }
+        bedSelect.innerHTML = htmlStr;
+        bedSelect.disabled = false;
+    })
+    .catch(err => {
+        alert("💡 提示：未能同步已佔用床位，系統已開啟容錯模式。");
+        let htmlStr = '<option value="">-- 請選擇您的房號床號 --</option>';
+        for (let r = 1; r <= 12; r++) {
+            let roomNo = `${floorNum}${String(r).padStart(2, '0')}`;
+            ['A', 'B', 'C', 'D'].forEach(letter => { htmlStr += `<option value="${roomNo}${letter}">${roomNo}${letter} 床位</option>`; });
         }
         bedSelect.innerHTML = htmlStr;
         bedSelect.disabled = false;
@@ -211,94 +199,72 @@ function handleBedChange() {
         return;
     }
     
-    const roomNo = bedVal.substring(0, 3); 
-    
-    fetch(`/get_occupied_beds?area=${encodeURIComponent(areaVal)}&room_no=${roomNo}`)
+    fetch(`/get_occupied_beds?area=${encodeURIComponent(areaVal)}&room_no=${bedVal.substring(0, 3)}`)
     .then(r => r.json())
     .then(data => {
-        const occupiedJobs = data.occupied_jobs; 
+        const occupiedJobs = data.occupied_jobs || []; 
         const allJobs = ['房間內外', '洗手台', '廁所', '淋浴間'];
-        
-        let htmlStr = '<option value="">-- 請選擇您負責的打傷區域 --</option>';
+        let htmlStr = '<option value="">-- 請選擇您負責的打掃區域 --</option>';
         allJobs.forEach(job => {
-            if (!occupiedJobs.includes(job)) {
+            if (occupiedJobs.includes(job)) {
+                htmlStr += `<option value="${job}" disabled>${job} (❌ 已被同房室友選走)</option>`;
+            } else {
                 htmlStr += `<option value="${job}">${job}</option>`;
             }
         });
-        
         jobSelect.innerHTML = htmlStr;
         jobSelect.disabled = false;
     });
 }
 
-// 🚀 核心升級：初始化與動態日期頁籤綁定
 document.addEventListener("DOMContentLoaded", function() {
     const weekDays = ["(日)", "(一)", "(二)", "(三)", "(四)", "(五)", "(六)"];
     const currentYear = new Date().getFullYear();
 
     document.querySelectorAll(".slot-card").forEach(card => {
-        let rawStr = card.getAttribute("data-rawtime"); // "9/15 14:00"
+        let rawStr = card.getAttribute("data-rawtime"); 
+        if (!rawStr || !rawStr.includes(" ")) return; 
         let parts = rawStr.split(" ");
-        let dateParts = parts[0].split("/"); // ["9", "15"]
+        let dateParts = parts[0].split("/"); 
         
         let testDate = new Date(currentYear, parseInt(dateParts[0])-1, parseInt(dateParts[1]));
-        let dayOfWeek = weekDays[testDate.getDay()];
-        let fullDateText = `${parts[0]} ${dayOfWeek}`; // "9/15 (二)"
+        let fullDateText = `${parts[0]} ${weekDays[testDate.getDay()]}`; 
         
-        // 1. 將帶有星期的名稱塞入顯示區
-        card.querySelector(".js-time-display").innerText = `${parts[0]} ${dayOfWeek} ${parts[1]}`;
-        // 2. 幫卡片打上特定的 Date 標記，方便等等過濾
+        card.querySelector(".js-time-display").innerText = `${parts[0]} ${weekDays[testDate.getDay()]} ${parts[1]}`;
         card.setAttribute("data-date-group", fullDateText);
     });
 });
 
-// 🚀 核心優化：動態生成目前的日期分頁列
 function generateDateTabs(areaClass) {
     const tabsBar = document.getElementById("date_tabs_bar");
-    tabsBar.innerHTML = ""; // 先清空舊的
-    
-    // 找出目前這個樓層所有「有開放」的日期組
+    tabsBar.innerHTML = ""; 
     let activeDates = [];
     document.querySelectorAll(`.${areaClass}`).forEach(card => {
         let dGroup = card.getAttribute("data-date-group");
-        if (!activeDates.includes(dGroup)) {
-            activeDates.push(dGroup);
-        }
+        if (dGroup && !activeDates.includes(dGroup)) activeDates.push(dGroup);
     });
 
-    if(activeDates.length === 0) return;
+    if(activeDates.length === 0) {
+        tabsBar.innerHTML = '<p style="color:gray;font-size:14px;">目前此樓層尚未開放任何預約時段。</p>';
+        return;
+    }
 
-    // 幫每個日期做一個漂亮按鈕
     activeDates.forEach((dateText, index) => {
         let btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "date-tab-btn";
-        btn.innerText = dateText;
+        btn.type = "button"; btn.className = "date-tab-btn"; btn.innerText = dateText;
         btn.onclick = function() { switchDateTab(dateText, btn); };
         tabsBar.appendChild(btn);
-        
-        // 預設自動點擊第一個日期
-        if(index === 0) {
-            switchDateTab(dateText, btn);
-        }
+        if(index === 0) switchDateTab(dateText, btn);
     });
 }
 
-// 🚀 切換日期分頁：隱藏其他天的時段，只顯示選定日期的時間
 function switchDateTab(targetDate, activeBtn) {
     document.querySelectorAll(".date-tab-btn").forEach(b => b.classList.remove("active"));
     activeBtn.classList.add("active");
-
-    const selectedArea = document.getElementById("area").value;
-    const areaClass = `area-${selectedArea}`;
-
-    // 隱藏目前樓層的所有卡片，再單獨把「符合今天日期」的卡片撈出來秀
+    const areaClass = `area-${document.getElementById("area").value}`;
+    document.querySelectorAll(`.slot-card`).forEach(card => card.style.display = "none");
     document.querySelectorAll(`.slot-card.${areaClass}`).forEach(card => {
-        if (card.getAttribute("data-date-group") === targetDate) {
-            card.style.display = "block";
-        } else {
-            card.style.display = "none";
-        }
+        if (card.getAttribute("data-date-group") === targetDate) card.style.display = "block";
     });
 }
 
@@ -306,15 +272,13 @@ function toggleCard(card) {
     const checkbox = card.querySelector('.time');
     if (checkbox.disabled) return;
     checkbox.checked = !checkbox.checked;
-    if (checkbox.checked) { card.classList.add('selected'); } else { card.classList.remove('selected'); }
+    if (checkbox.checked) card.classList.add('selected'); else card.classList.remove('selected');
     updateCount();
 }
 
 function filterSlots() {
     const selectedArea = document.getElementById("area").value;
     const slotsSection = document.getElementById("slots_section");
-    
-    // 先取消所有已勾選的時段
     document.querySelectorAll(".slot-card").forEach(card => {
         card.classList.remove('selected');
         const cb = card.querySelector('.time');
@@ -322,15 +286,8 @@ function filterSlots() {
         card.style.display = "none";
     });
     updateCount();
-    
-    if (!selectedArea) { 
-        slotsSection.style.display = "none"; 
-        return; 
-    }
-    
+    if (!selectedArea) { slotsSection.style.display = "none"; return; }
     slotsSection.style.display = "block";
-    
-    // 🚀 觸發分頁引擎：去撈出這一層樓有哪些天，並做成頁籤
     generateDateTabs(`area-${selectedArea}`);
 }
 
@@ -353,14 +310,38 @@ document.getElementById("form").addEventListener("submit", function(e){
     document.querySelectorAll(`.area-${areaVal} .time:checked`).forEach(cb => selectedTimes.push(cb.value));
 
     if (selectedTimes.length !== 3) {
-        alert("❌ 預約失敗！請剛好選擇 3 個時段。");
-        return;
+        alert("❌ 請選擇 3 個時段。"); return;
     }
+    if (!areaVal || !studentIdVal || !nameVal || !jobVal) {
+        alert("❌ 基本欄位未填寫完整！"); return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    let dateObjects = selectedTimes.map(timeStr => {
+        let parts = timeStr.split(" ");
+        let dateParts = parts[0].split("/");
+        let timeParts = parts[1].split(":");
+        return new Date(currentYear, parseInt(dateParts[0])-1, parseInt(dateParts[1]), parseInt(timeParts[0]), parseInt(timeParts[1]));
+    });
+
+    dateObjects.sort((a, b) => a - b);
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    if ((dateObjects[2] - dateObjects[0]) > 7 * oneDayMs) {
+        alert("❌ 第一次檢查時間必須在第三次的前一週（7天）內。"); return;
+    }
+    if ((dateObjects[2] - dateObjects[1]) > 2 * oneDayMs) {
+        alert("❌ 第二次檢查時間必須在第三次的前兩天（2天）內。"); return;
+    }
+
+    let sortedTimes = dateObjects.map(d => {
+        return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    });
 
     fetch("/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ area: areaVal, student_id: studentIdVal, name: nameVal, times: selectedTimes, note: noteVal, job: jobVal })
+        body: JSON.stringify({ area: areaVal, student_id: studentIdVal, name: nameVal, times: sortedTimes, note: noteVal, job: jobVal })
     })
     .then(response => response.json())
     .then(data => {

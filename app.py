@@ -3,33 +3,18 @@ import sqlite3
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 app = Flask(__name__)
-app.secret_key = "dorm_secret_key_change_this_in_production"
+app.secret_key = "your_secret_key_here"  # 請替換成你專屬的 Session 密鑰
 
-# 🚀 修正：為了配合 Render 免費版不支援 Disks 的限制，直接將資料庫存在專案當前目錄下
-DB_PATH = "database.db"
+# 設定資料庫絕對路徑
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-# 初始化資料庫（若檔案不存在會自動建立，並補上必要的欄位與測試時段）
 def init_db():
+    """初始化資料庫與資料表結構"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # 建立預約紀錄表 (records)
-    # 🚀 修正：將原本誤植的 TEXT NOT EXISTS 修正為正規的 TEXT NOT NULL
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            area TEXT NOT NULL,
-            student_id TEXT UNIQUE,
-            name TEXT,
-            job TEXT,
-            time1 TEXT,
-            time2 TEXT,
-            time3 TEXT,
-            note TEXT
-        )
-    """)
-    
-    # 建立開放時段設定表 (slots)
+    # 1. 建立開放時段資料表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS slots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,59 +25,57 @@ def init_db():
         )
     """)
     
-    # 為了避免初次運行時完全沒時段可測，幫各區預塞一些 6/8, 6/9 的測試時段
-    cursor.execute("SELECT COUNT(*) FROM slots")
-    if cursor.fetchone()[0] == 0:
-        test_areas = ["國際3樓", "國際5樓", "國際6樓", "國際7樓", "國際8樓"]
-        test_times = [
-            "6/8 13:00", "6/8 13:30", "6/8 14:00", "6/8 14:30", 
-            "6/9 09:00", "6/9 09:30", "6/9 10:00", "6/9 10:30"
-        ]
-        for a in test_areas:
-            for t in test_times:
-                cursor.execute("INSERT OR IGNORE INTO slots (time_str, max_limit, area) VALUES (?, ?, ?)", (t, 3, a))
-                
+    # 2. 建立學生預約紀錄資料表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT UNIQUE,
+            name TEXT,
+            job TEXT,
+            time1 TEXT,
+            time2 TEXT,
+            time3 TEXT,
+            note TEXT,
+            area TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
-# 啟動時跑初始化
+# 啟動時立刻初始化資料庫
 init_db()
 
-# 輔助函式：計算目前各時段已經被預約的人數
-def get_slot_counts():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT area, time1, time2, time3 FROM records")
-    rows = cursor.fetchall()
-    conn.close()
-    
-    counts = {}
-    for area, t1, t2, t3 in rows:
-        for t in [t1, t2, t3]:
-            if t:
-                key = f"{area}_{t}"
-                counts[key] = counts.get(key, 0) + 1
-    return counts
-
-
-# ==========================================
-# 🙋‍♂️ 學生填寫端路由
-# ==========================================
+# ----------------- 🎯 前台學生預約路由 -----------------
 
 @app.route("/")
 def index():
+    """預約首頁"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # 撈出所有時段配置，並按照時間排序
-    cursor.execute("SELECT time_str, max_limit, area, time_str FROM slots ORDER BY id ASC")
-    slots_data = cursor.fetchall()
-    conn.close()
     
-    slot_counts = get_slot_counts()
+    # 撈取所有開放時段，並依照時間由早到晚自動排序
+    cursor.execute("SELECT time_str, max_limit, area FROM slots ORDER BY time_str ASC")
+    slots_data = cursor.fetchall()
+    
+    # 統計各時段目前已被預約的人數
+    cursor.execute("SELECT area, time1, time2, time3 FROM records")
+    records = cursor.fetchall()
+    
+    slot_counts = {}
+    for r in records:
+        area_val = r[0]
+        for t in [r[1], r[2], r[3]]:
+            if t:
+                key = f"{area_val}_{t}"
+                slot_counts[key] = slot_counts.get(key, 0) + 1
+                
+    conn.close()
     return render_template("index.html", slots_data=slots_data, slot_counts=slot_counts)
+
 
 @app.route("/get_occupied_beds")
 def get_occupied_beds():
+    """API: 取得已被預約的床位或打掃負責區域"""
     area = request.args.get("area", "").strip()
     room_no = request.args.get("room_no", "").strip()
     
@@ -100,174 +83,188 @@ def get_occupied_beds():
     cursor = conn.cursor()
     
     if room_no:
-        # 如果有傳房號，代表是要查該房內「有哪些打掃工作已經被挑走了」
+        # 查詢同寢室已被挑走的工作
         cursor.execute("SELECT job FROM records WHERE area = ? AND student_id LIKE ?", (area, f"{room_no}%"))
         occupied_jobs = [r[0] for r in cursor.fetchall()]
         conn.close()
         return jsonify({"occupied_jobs": occupied_jobs})
     else:
-        # 否則就是純查該樓層「有哪些床位代碼已經被註冊了」
-        cursor.execute("SELECT student_id FROM records WHERE area = ?")
+        # 確實補上元組參數 (area,) 確保 SQL 問號順利綁定
+        cursor.execute("SELECT student_id FROM records WHERE area = ?", (area,))
         occupied_beds = [r[0] for r in cursor.fetchall()]
         conn.close()
         return jsonify({"occupied": occupied_beds})
 
+
 @app.route("/submit", methods=["POST"])
 def submit():
+    """處理學生預約表單送出"""
     data = request.get_json()
     area = data.get("area")
-    student_id = data.get("student_id", "").strip().upper()
-    name = data.get("name", "").strip()
+    student_id = data.get("student_id")
+    name = data.get("name")
     job = data.get("job")
-    times = data.get("times", [])
-    note = data.get("note", "").strip()
-    
-    if not (area and student_id and name and job and len(times) == 3):
-        return jsonify({"status": "error", "message": "❌ 欄位填寫不完整或未選滿 3 個時段！"})
-        
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # 檢查該床位是否已被捷足先登
-    cursor.execute("SELECT id FROM records WHERE area = ? AND student_id = ?", (area, student_id))
-    if cursor.fetchone():
-        conn.close()
-        return jsonify({"status": "error", "message": f"❌ 預約失敗！【{student_id}】這個床位已經被其他人登記過了！"})
-        
-    # 檢查同房間內該打掃工作是否已被搶走
-    room_no = student_id[:3]
-    cursor.execute("SELECT id FROM records WHERE area = ? AND student_id LIKE ? AND job = ?", (area, f"{room_no}%", job))
-    if cursor.fetchone():
-        conn.close()
-        return jsonify({"status": "error", "message": f"❌ 預約失敗！該房的【{job}】工作已被同房室友選走了！"})
-        
-    # 檢查選擇的三個時段是否還有餘額
-    slot_counts = get_slot_counts()
-    cursor.execute("SELECT time_str, max_limit FROM slots WHERE area = ?", (area,))
-    limits = {r[0]: r[1] for r in cursor.fetchall()}
-    
-    for t in times:
-        current_booked = slot_counts.get(f"{area}_{t}", 0)
-        max_allow = limits.get(t, 0)
-        if current_booked >= max_allow:
-            conn.close()
-            return jsonify({"status": "error", "message": f"❌ 殘念！時段【{t}】剛剛好額滿了，請重選其他時段。"})
-            
-    # 安全過關，寫入資料庫
+    times = data.get("times", [])  # 包含 3 個排序好時段的陣列
+    note = data.get("note", "")
+
+    if not area or not student_id or not name or not job or len(times) != 3:
+        return jsonify({"status": "error", "message": "❌ 資料填寫不完整，請重新確認！"})
+
     try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # 寫入學生預約名冊
         cursor.execute("""
-            INSERT INTO records (area, student_id, name, job, time1, time2, time3, note)
+            INSERT INTO records (student_id, name, job, time1, time2, time3, note, area)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (area, student_id, name, job, times[0], times[1], times[2], note))
+        """, (student_id, name, job, times[0], times[1], times[2], note, area))
+        
         conn.commit()
         conn.close()
-        return jsonify({"status": "success", "message": "🎉 恭喜你！三段離宿檢查時間已成功預約儲存！"})
+        return jsonify({"status": "success", "message": f"🎉 預約成功！\n同學 {name}（床位 {student_id}）已完成登記。"})
     except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({"status": "error", "message": "❌ 該床位已被重複登記。"})
+        return jsonify({"status": "error", "message": "❌ 預約失敗！該房號床位已經被登記過了。"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"錯誤: {str(e)}"})
 
 
-# ==========================================
-# 👑 管理員後台路由
-# ==========================================
-
-# 密碼對照表
-PASSWORDS = {
-    "333": "國際3樓",
-    "555": "國際5樓",
-    "666": "國際6樓",
-    "777": "國際7樓",
-    "888": "國際8樓"
-}
+# ----------------- 👑 後台管理員路由 -----------------
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
+    """後台登入"""
     if request.method == "POST":
-        pwd = request.form.get("password", "").strip()
-        if pwd in PASSWORDS:
+        area = request.form.get("area")
+        password = request.form.get("password")
+        
+        if (area == "國際5樓" and password == "555") or \
+           (area == "國際3樓" and password == "333") or \
+           (password == "admin123"):
             session["admin_logged_in"] = True
-            session["admin_area"] = PASSWORDS[pwd]
+            session["admin_area"] = area
             return redirect(url_for("admin_dashboard"))
         else:
-            return render_template("admin_login.html", error="❌ 密碼錯誤，請重新輸入！")
-    return render_template("admin_login.html")
+            return "<h3>❌ 密碼錯誤或分區不正確！請按上一頁重新輸入。</h3>"
+            
+    return """
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>管理後台登入</title>
+        <div style="max-width:350px; margin:80px auto; padding:25px; border:1px solid #ddd; border-radius:8px; font-family:sans-serif;">
+            <h2 style="text-align:center;">👑 樓長後台登入</h2>
+            <form method="POST">
+                <p>管理樓層：<br>
+                <select name="area" style="width:100%; padding:8px;">
+                    <option value="國際3樓">國際3樓</option>
+                    <option value="國際5樓">國際5樓</option>
+                    <option value="國際6樓">國際6樓</option>
+                    <option value="國際7樓">國際7樓</option>
+                    <option value="國際8樓">國際8樓</option>
+                </select></p>
+                <p>管理後台密碼：<br>
+                <input type="password" name="password" required style="width:100%; padding:8px; box-sizing:border-box;"></p>
+                <button type="submit" style="width:100%; padding:10px; background:#34495e; color:white; border:none; cursor:pointer; font-weight:bold;">進入後台</button>
+            </form>
+        </div>
+    """
 
-@app.route("/admin/logout")
-def admin_logout():
-    session.clear()
-    return redirect(url_for("admin_login"))
 
 @app.route("/admin")
+@app.route("/admin/dashboard")
 def admin_dashboard():
+    """管理員後台主面板"""
     if not session.get("admin_logged_in"):
         return redirect(url_for("admin_login"))
         
     current_admin_area = session.get("admin_area")
     
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row 
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    # 撈出該層管理員管轄的學生名冊
-    cursor.execute("SELECT * FROM records WHERE area = ? ORDER BY student_id ASC", (current_admin_area,))
+    # 時段列表加上 ORDER BY time_str ASC，由早到晚排序
+    cursor.execute("SELECT id, time_str, max_limit, area FROM slots ORDER BY time_str ASC")
+    slots_data = [list(row) for row in cursor.fetchall()]
+    
+    # 學生預約名冊加上 ORDER BY student_id ASC，讓房號（如 501A 到 512D）整齊排列
+    cursor.execute("""
+        SELECT id, student_id, name, job, time1, time2, time3, note 
+        FROM records 
+        WHERE area = ? 
+        ORDER BY student_id ASC
+    """, (current_admin_area,))
     records = cursor.fetchall()
     
-    # 撈出全台時段
-    cursor.execute("SELECT id, time_str, max_limit, area, time_str FROM slots ORDER BY id ASC")
-    raw_slots = cursor.fetchall()
+    # 統計時段計數器
+    cursor.execute("SELECT area, time1, time2, time3 FROM records")
+    all_records_for_count = cursor.fetchall()
+    slot_counts = {}
+    for r in all_records_for_count:
+        area_val = r["area"]
+        for t in [r["time1"], r["time2"], r["time3"]]:
+            if t:
+                key = f"{area_val}_{t}"
+                slot_counts[key] = slot_counts.get(key, 0) + 1
+                
     conn.close()
-    
-    slot_counts = get_slot_counts()
-    return render_template("admin.html", records=records, slots_data=raw_slots, slot_counts=slot_counts)
+    return render_template("admin.html", slots_data=slots_data, slot_counts=slot_counts, records=records)
+
 
 @app.route("/admin/add_slot", methods=["POST"])
 def add_slot():
-    if not session.get("admin_logged_in"): return jsonify({"status": "error", "message": "未登入"})
-    
-    current_admin_area = session.get("admin_area")
+    """後台功能：新增開放時段"""
+    if not session.get("admin_logged_in"):
+        return jsonify({"status": "error", "message": "權限不足！"})
+        
     data = request.get_json()
     time_str = data.get("time_str", "").strip()
     max_limit = int(data.get("max_limit", 3))
+    current_admin_area = session.get("admin_area")
     
-    if not time_str: return jsonify({"status": "error", "message": "時間不可為空"})
-    
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO slots (time_str, max_limit, area) VALUES (?, ?, ?)", (time_str, max_limit, current_admin_area))
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO slots (time_str, max_limit, area) VALUES (?, ?, ?)
+        """, (time_str, max_limit, current_admin_area))
         conn.commit()
-        msg = f"成功為【{current_admin_area}】新增時段：{time_str}"
+        conn.close()
+        return jsonify({"status": "success", "message": f"✅ 成功上架時段：【{time_str}】！"})
     except sqlite3.IntegrityError:
-        msg = "❌ 該時段已存在，不可重複建立！"
-    conn.close()
-    return jsonify({"message": msg})
+        return jsonify({"status": "error", "message": "❌ 該時段已經存在，請勿重複新增！"})
+
 
 @app.route("/admin/delete_slot", methods=["POST"])
 def delete_slot():
-    if not session.get("admin_logged_in"): return jsonify({"status": "error", "message": "未登入"})
-    
-    current_admin_area = session.get("admin_area")
+    """後台功能：刪除開放時段"""
+    if not session.get("admin_logged_in"):
+        return jsonify({"status": "error", "message": "權限不足！"})
+        
     data = request.get_json()
     time_str = data.get("time_str", "").strip()
+    current_admin_area = session.get("admin_area")
     
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM slots WHERE area = ? AND time_str = ?", (current_admin_area, time_str))
+    cursor.execute("DELETE FROM slots WHERE time_str = ? AND area = ?", (time_str, current_admin_area))
     conn.commit()
     conn.close()
-    return jsonify({"message": f"已成功刪除時段：{time_str}"})
+    return jsonify({"status": "success", "message": f"🗑️ 已成功移除時段：【{time_str}】。"})
+
 
 @app.route("/admin/delete_student", methods=["POST"])
 def delete_student():
+    """後台功能：精準單獨刪除某一學生的預約紀錄"""
     if not session.get("admin_logged_in"): 
-        return jsonify({"status": "error", "message": "權限不足"})
+        return jsonify({"status": "error", "message": "權限不足，請重新登入！"})
         
     current_admin_area = session.get("admin_area")
     data = request.get_json()
     bed_no = data.get("student_id", "").strip()
     
     if not bed_no: 
-        return jsonify({"status": "error", "message": "缺少房號床號參數"})
+        return jsonify({"status": "error", "message": "缺少必要的房號床位參數！"})
         
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -275,13 +272,17 @@ def delete_student():
         cursor.execute("DELETE FROM records WHERE area = ? AND student_id = ?", (current_admin_area, bed_no))
         conn.commit()
         conn.close()
-        return jsonify({"status": "success", "message": f"成功刪除【{bed_no}】的預約紀錄！床位與打掃工作已重新釋放。"})
+        return jsonify({"status": "success", "message": f"🎉 成功刪除【{bed_no}】的預約紀錄！\n該床位與打掃工作已重新釋放。"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+
 @app.route("/admin/clear", methods=["POST"])
-def clear_database():
-    if not session.get("admin_logged_in"): return jsonify({"status": "error", "message": "未登入"})
+def admin_clear():
+    """後台功能：清空當前樓層所有預約紀錄"""
+    if not session.get("admin_logged_in"):
+        return jsonify({"status": "error", "message": "權限不足！"})
+        
     current_admin_area = session.get("admin_area")
     
     conn = sqlite3.connect(DB_PATH)
@@ -289,12 +290,14 @@ def clear_database():
     cursor.execute("DELETE FROM records WHERE area = ?", (current_admin_area,))
     conn.commit()
     conn.close()
-    return jsonify({"message": f"💥 【{current_admin_area}】的所有學生預約紀錄已成功全數清空！"})
+    return jsonify({"status": "success", "message": f"💥 已全數清空【{current_admin_area}】的所有學生登記紀錄！"})
 
 
-# ==========================================
-# 🏁 啟動引擎
-# ==========================================
+@app.route("/admin/logout")
+def admin_logout():
+    """後台登出"""
+    session.clear()
+    return redirect(url_for("admin_login"))
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)
