@@ -5,8 +5,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 app = Flask(__name__)
 app.secret_key = "dorm_secret_key_change_this_in_production"
 
-# 🚀 雲端儲存安全防線：判斷是否在 Render 環境
-# 🚀 修正：直接存放在專案目錄下，繞過免費版不支援 Disks 的限制
+# 🚀 修正：為了配合 Render 免費版不支援 Disks 的限制，直接將資料庫存在專案當前目錄下
 DB_PATH = "database.db"
 
 # 初始化資料庫（若檔案不存在會自動建立，並補上必要的欄位與測試時段）
@@ -15,10 +14,11 @@ def init_db():
     cursor = conn.cursor()
     
     # 建立預約紀錄表 (records)
+    # 🚀 修正：將原本誤植的 TEXT NOT EXISTS 修正為正規的 TEXT NOT NULL
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            area TEXT NOT EXISTS,
+            area TEXT NOT NULL,
             student_id TEXT UNIQUE,
             name TEXT,
             job TEXT,
@@ -171,7 +171,7 @@ def submit():
 # 👑 管理員後台路由
 # ==========================================
 
-# 密碼對照表：輸入特定的三位數密碼，就能對應登入該樓層後台
+# 密碼對照表
 PASSWORDS = {
     "333": "國際3樓",
     "555": "國際5樓",
@@ -205,7 +205,6 @@ def admin_dashboard():
     current_admin_area = session.get("admin_area")
     
     conn = sqlite3.connect(DB_PATH)
-    # 設定回傳結果可以像字典一樣用欄位名取值 (row.name)
     conn.row_factory = sqlite3.Row 
     cursor = conn.cursor()
     
@@ -213,7 +212,7 @@ def admin_dashboard():
     cursor.execute("SELECT * FROM records WHERE area = ? ORDER BY student_id ASC", (current_admin_area,))
     records = cursor.fetchall()
     
-    # 撈出全台時段（用於畫面上半部的時段增刪面板）
+    # 撈出全台時段
     cursor.execute("SELECT id, time_str, max_limit, area, time_str FROM slots ORDER BY id ASC")
     raw_slots = cursor.fetchall()
     conn.close()
@@ -258,7 +257,6 @@ def delete_slot():
     conn.close()
     return jsonify({"message": f"已成功刪除時段：{time_str}"})
 
-# 🚀 精準刪除個別學生登記結果的 API 路由
 @app.route("/admin/delete_student", methods=["POST"])
 def delete_student():
     if not session.get("admin_logged_in"): 
@@ -274,7 +272,6 @@ def delete_student():
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        # 同時核對樓層與床位，確保安全不跨區誤刪
         cursor.execute("DELETE FROM records WHERE area = ? AND student_id = ?", (current_admin_area, bed_no))
         conn.commit()
         conn.close()
@@ -299,6 +296,5 @@ def clear_database():
 # 🏁 啟動引擎
 # ==========================================
 if __name__ == "__main__":
-    # 讓 Render 自動動態分配 Port，若在自己電腦跑則預設 5000
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
