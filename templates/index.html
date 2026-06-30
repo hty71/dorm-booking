@@ -101,9 +101,16 @@
         </div>
 
         <div class="input-group">
-            <label for="job">公共空間打掃負責區域</label>
+            <label for="job">公共空間打掃負責區域 (必填)</label>
             <select id="job" required disabled>
                 <option value="">-- 請先選擇上方房號床號 --</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="job2">第二負責區域 (選填，若寢室不滿 4 人需兼任時填寫)</label>
+            <select id="job2" disabled>
+                <option value="">-- 無 (僅負責上方主要區域) --</option>
             </select>
         </div>
 
@@ -152,26 +159,40 @@ function handleAreaChange() {
     const areaSelect = document.getElementById("area");
     const bedSelect = document.getElementById("student_id");
     const jobSelect = document.getElementById("job");
-    const selectedArea = areaSelect.value;
+    const job2Select = document.getElementById("job2");
+    const selectedArea = areaSelect.value; // 🚀 確實宣告變了
     
     filterSlots();
+    
+    // 先重設打掃區域選單
     jobSelect.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
     jobSelect.disabled = true;
+    job2Select.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
+    job2Select.disabled = true;
 
+    // 🚀 安全檢查：如果沒選區域，直接鎖定房號並返回，絕不往下亂跑
     if (!selectedArea) {
         bedSelect.innerHTML = '<option value="">-- 請先選擇上方宿舍區域樓層 --</option>';
         bedSelect.disabled = true;
         return;
     }
     
-    const floorNum = selectedArea.match(/\d+/)[0];
+    // 提取樓層數字
+    const floorMatch = selectedArea.match(/\d+/);
+    if (!floorMatch) return;
+    const floorNum = floorMatch[0];
     
+    // 發送請求取得已被預約的床位
     fetch("/get_occupied_beds?area=" + encodeURIComponent(selectedArea))
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error(`HTTP 錯誤: ${r.status}`);
+        return r.json();
+    })
     .then(data => {
         const occupiedBeds = data && data.occupied ? data.occupied : []; 
         let htmlStr = '<option value="">-- 請選擇您的房號床號 --</option>';
         
+        // 生成該樓層的 12 間房、各 4 個床位
         for (let r = 1; r <= 12; r++) {
             let roomNo = `${floorNum}${String(r).padStart(2, '0')}`; 
             ['A', 'B', 'C', 'D'].forEach(letter => {
@@ -185,25 +206,31 @@ function handleAreaChange() {
         bedSelect.disabled = false;
     })
     .catch(err => {
-        alert("💡 提示：未能同步已佔用床位，系統已開啟容錯模式。");
+        console.error("讀取床位失敗，啟動全開放容錯模式:", err);
         let htmlStr = '<option value="">-- 請選擇您的房號床號 --</option>';
         for (let r = 1; r <= 12; r++) {
             let roomNo = `${floorNum}${String(r).padStart(2, '0')}`;
-            ['A', 'B', 'C', 'D'].forEach(letter => { htmlStr += `<option value="${roomNo}${letter}">${roomNo}${letter} 床位</option>`; });
+            ['A', 'B', 'C', 'D'].forEach(letter => { 
+                htmlStr += `<option value="${roomNo}${letter}">${roomNo}${letter} 床位</option>`; 
+            });
         }
         bedSelect.innerHTML = htmlStr;
         bedSelect.disabled = false;
     });
 }
 
+// 🚀 同步渲染與鎖定第一、第二工作選單
 function handleBedChange() {
     const areaVal = document.getElementById("area").value;
     const bedVal = document.getElementById("student_id").value; 
     const jobSelect = document.getElementById("job");
+    const job2Select = document.getElementById("job2");
     
     if(!bedVal) {
         jobSelect.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
         jobSelect.disabled = true;
+        job2Select.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
+        job2Select.disabled = true;
         return;
     }
     
@@ -212,6 +239,8 @@ function handleBedChange() {
     .then(data => {
         const occupiedJobs = data.occupied_jobs || []; 
         const allJobs = ['房間內外', '洗手台', '廁所', '淋浴間'];
+        
+        // 渲染主要選單
         let htmlStr = '<option value="">-- 請選擇您負責的打掃區域 --</option>';
         allJobs.forEach(job => {
             if (occupiedJobs.includes(job)) {
@@ -222,6 +251,18 @@ function handleBedChange() {
         });
         jobSelect.innerHTML = htmlStr;
         jobSelect.disabled = false;
+
+        // 渲染兼任選單
+        let htmlStr2 = '<option value="">-- 無 (僅負責上方主要區域) --</option>';
+        allJobs.forEach(job => {
+            if (occupiedJobs.includes(job)) {
+                htmlStr2 += `<option value="${job}" disabled>${job} (❌ 已被同房室友選走)</option>`;
+            } else {
+                htmlStr2 += `<option value="${job}">${job}</option>`;
+            }
+        });
+        job2Select.innerHTML = htmlStr2;
+        job2Select.disabled = false;
     });
 }
 
@@ -306,11 +347,13 @@ function updateCount() {
     document.getElementById("submitBtn").disabled = (count !== 3);
 }
 
+// 🚀 表單送出：合併打掃區域與 3 個時段嚴格時間差判定
 document.getElementById("form").addEventListener("submit", function(e){
     e.preventDefault();
     let areaVal = document.getElementById("area").value;
     let studentIdVal = document.getElementById("student_id").value; 
     let jobVal = document.getElementById("job").value; 
+    let job2Val = document.getElementById("job2").value; 
     let nameVal = document.getElementById("name").value.trim();
     let noteVal = document.getElementById("note").value.trim(); 
 
@@ -322,6 +365,15 @@ document.getElementById("form").addEventListener("submit", function(e){
     }
     if (!areaVal || !studentIdVal || !nameVal || !jobVal) {
         alert("❌ 基本欄位未填寫完整！"); return;
+    }
+
+    // 🚀 第一負責與第二負責防呆與合併
+    let finalJob = jobVal;
+    if (job2Val && job2Val !== jobVal) {
+        finalJob = `${jobVal} + ${job2Val}`;
+    } else if (job2Val === jobVal) {
+        alert("❌ 主要打掃區域與兼任區域不能選擇同一個地方！");
+        return;
     }
 
     const currentYear = new Date().getFullYear();
@@ -349,7 +401,7 @@ document.getElementById("form").addEventListener("submit", function(e){
     fetch("/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ area: areaVal, student_id: studentIdVal, name: nameVal, times: sortedTimes, note: noteVal, job: jobVal })
+        body: JSON.stringify({ area: areaVal, student_id: studentIdVal, name: nameVal, times: sortedTimes, note: noteVal, job: finalJob })
     })
     .then(response => response.json())
     .then(data => {

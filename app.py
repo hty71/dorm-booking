@@ -79,21 +79,75 @@ def get_occupied_beds():
     area = request.args.get("area", "").strip()
     room_no = request.args.get("room_no", "").strip()
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    # 🚀 如果連區域都沒傳過來，直接回傳空資料，防止後續 SQL 報錯
+    if not area:
+        return jsonify({"occupied": [], "occupied_jobs": []})
+        
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if room_no:
+            # 查詢同寢室已被挑走的工作字串
+            cursor.execute("SELECT job FROM records WHERE area = ? AND student_id LIKE ?", (area, f"{room_no}%"))
+            raw_jobs = [r[0] for r in cursor.fetchall()]
+            
+            occupied_jobs = []
+            for job_str in raw_jobs:
+                if job_str:
+                    parts = [p.strip() for p in job_str.split("+")]
+                    occupied_jobs.extend(parts)
+                    
+            conn.close()
+            return jsonify({"occupied": [], "occupied_jobs": occupied_jobs})
+        else:
+            # 🚀 安全綁定：使用 (area,) 確保元組格式完全正確
+            cursor.execute("SELECT student_id FROM records WHERE area = ?", (area,))
+            occupied_beds = [r[0] for r in cursor.fetchall()]
+            conn.close()
+            return jsonify({"occupied": occupied_beds, "occupied_jobs": []})
+            
+    except Exception as e:
+        # 🚀 終極防禦：萬一資料庫真的噴錯，列印在終端機，但「絕對」要回傳正常 JSON 給前端，不讓網頁卡死！
+        print(f"❌ 資料庫查詢發生異常: {str(e)}")
+        return jsonify({"occupied": [], "occupied_jobs": [], "error": str(e)})@app.route("/get_occupied_beds")
+def get_occupied_beds():
+    """API: 取得已被預約的床位或打掃負責區域"""
+    area = request.args.get("area", "").strip()
+    room_no = request.args.get("room_no", "").strip()
     
-    if room_no:
-        # 查詢同寢室已被挑走的工作
-        cursor.execute("SELECT job FROM records WHERE area = ? AND student_id LIKE ?", (area, f"{room_no}%"))
-        occupied_jobs = [r[0] for r in cursor.fetchall()]
-        conn.close()
-        return jsonify({"occupied_jobs": occupied_jobs})
-    else:
-        # 確實補上元組參數 (area,) 確保 SQL 問號順利綁定
-        cursor.execute("SELECT student_id FROM records WHERE area = ?", (area,))
-        occupied_beds = [r[0] for r in cursor.fetchall()]
-        conn.close()
-        return jsonify({"occupied": occupied_beds})
+    # 🚀 如果連區域都沒傳過來，直接回傳空資料，防止後續 SQL 報錯
+    if not area:
+        return jsonify({"occupied": [], "occupied_jobs": []})
+        
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if room_no:
+            # 查詢同寢室已被挑走的工作字串
+            cursor.execute("SELECT job FROM records WHERE area = ? AND student_id LIKE ?", (area, f"{room_no}%"))
+            raw_jobs = [r[0] for r in cursor.fetchall()]
+            
+            occupied_jobs = []
+            for job_str in raw_jobs:
+                if job_str:
+                    parts = [p.strip() for p in job_str.split("+")]
+                    occupied_jobs.extend(parts)
+                    
+            conn.close()
+            return jsonify({"occupied": [], "occupied_jobs": occupied_jobs})
+        else:
+            # 🚀 安全綁定：使用 (area,) 確保元組格式完全正確
+            cursor.execute("SELECT student_id FROM records WHERE area = ?", (area,))
+            occupied_beds = [r[0] for r in cursor.fetchall()]
+            conn.close()
+            return jsonify({"occupied": occupied_beds, "occupied_jobs": []})
+            
+    except Exception as e:
+        # 🚀 終極防禦：萬一資料庫真的噴錯，列印在終端機，但「絕對」要回傳正常 JSON 給前端，不讓網頁卡死！
+        print(f"❌ 資料庫查詢發生異常: {str(e)}")
+        return jsonify({"occupied": [], "occupied_jobs": [], "error": str(e)})
 
 
 @app.route("/submit", methods=["POST"])
@@ -300,4 +354,5 @@ def admin_logout():
     return redirect(url_for("admin_login"))
 
 if __name__ == "__main__":
+    # 若需允許手機連入本機電腦，可將 host 改為 "0.0.0.0"
     app.run(host="127.0.0.1", port=5000, debug=True)
