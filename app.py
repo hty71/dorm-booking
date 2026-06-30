@@ -6,11 +6,8 @@ app = Flask(__name__)
 app.secret_key = "dorm_secret_key_change_this_in_production"
 
 # 🚀 雲端儲存安全防線：判斷是否在 Render 環境
-# 如果是，就把資料庫存在 Render 提供的不斷電免費磁碟區路徑 /data 下
-if os.environ.get("RENDER"):
-    DB_PATH = "/data/database.db"
-else:
-    DB_PATH = "database.db"  # 本地電腦測試依然用原來的檔案
+# 🚀 修正：直接存放在專案目錄下，繞過免費版不支援 Disks 的限制
+DB_PATH = "database.db"
 
 # 初始化資料庫（若檔案不存在會自動建立，並補上必要的欄位與測試時段）
 def init_db():
