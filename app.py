@@ -607,6 +607,39 @@ def delete_slot():
     conn.close()
     return jsonify({"status": "success", "message": f"🗑️ 已成功移除時段：【{time_str}】。"})
 
+@app.route("/admin/update_slot_limit", methods=["POST"])
+def update_slot_limit():
+    """後台功能：即時修改單一時段的人數上限"""
+    if not session.get("admin_logged_in"):
+        return jsonify({"status": "error", "message": "權限不足！"})
+        
+    data = request.get_json()
+    time_str = data.get("time_str", "").strip()
+    new_limit = data.get("max_limit")
+    current_admin_area = session.get("admin_area")
+
+    if not time_str or new_limit is None:
+        return jsonify({"status": "error", "message": "參數不完整！"})
+
+    try:
+        new_limit = int(new_limit)
+        if new_limit < 1:
+            return jsonify({"status": "error", "message": "名額上限至少需為 1 人！"})
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE slots 
+            SET max_limit = %s 
+            WHERE area = %s AND time_str = %s
+        """, (new_limit, current_admin_area, time_str))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"status": "success", "message": f"✅ 時段【{time_str}】名額已更新為 {new_limit} 人！"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"更新失敗: {str(e)}"})
+
 @app.route("/admin/delete_student", methods=["POST"])
 def delete_student():
     """後台功能：刪除單一學生的預約紀錄"""
