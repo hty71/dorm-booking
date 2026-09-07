@@ -200,6 +200,47 @@ def submit():
     except Exception as e:
         return jsonify({"status": "error", "message": f"錯誤: {str(e)}"})
 
+@app.route("/query_booking", methods=["POST"])
+def query_booking():
+    """前台功能：學生輸入房號床號查詢自己的預約紀錄與檢查狀態"""
+    data = request.get_json()
+    area = data.get("area", "").strip()
+    student_id = data.get("student_id", "").strip()
+
+    if not area or not student_id:
+        return jsonify({"status": "error", "message": "請選擇樓層並輸入完整的房號床位！"})
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=DictCursor)
+        cursor.execute("""
+            SELECT student_id, name, job, time1, time2, time3, note, COALESCE(status, '未檢查') as status
+            FROM records
+            WHERE area = %s AND UPPER(student_id) = UPPER(%s)
+        """, (area, student_id))
+        record = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not record:
+            return jsonify({"status": "not_found", "message": f"查無【{area} {student_id}】的預約紀錄，請確認輸入是否正確。"})
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "student_id": record["student_id"],
+                "name": record["name"],
+                "job": record["job"],
+                "time1": record["time1"],
+                "time2": record["time2"],
+                "time3": record["time3"],
+                "note": record["note"] or "無",
+                "check_status": record["status"]
+            }
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"系統查詢失敗: {str(e)}"})
+
 # ----------------- 👑 後台管理員路由 -----------------
 
 @app.route("/admin/login", methods=["GET", "POST"])
