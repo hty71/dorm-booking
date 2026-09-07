@@ -279,7 +279,6 @@ def admin_dashboard():
     default_text = "1. 請確實清空個人物品與寢室垃圾。\n2. 離宿前請將個人負責打掃空間清理乾淨。\n3. 請於預約時段準時於寢室等候幹部檢查。"
     announcement_content = ann_row["content"] if ann_row and ann_row["content"] else default_text
 
-    # 聚合行事曆資料：按開放時段整理出有哪些同學預約
     schedule_data = {}
     for slot in slots_data:
         if slot[2] == current_admin_area:
@@ -438,7 +437,7 @@ def export_csv():
 
 @app.route("/admin/add_slot", methods=["POST"])
 def add_slot():
-    """後台功能：新增開放時段"""
+    """後台功能：新增單一時段"""
     if not session.get("admin_logged_in"):
         return jsonify({"status": "error", "message": "權限不足！"})
         
@@ -462,7 +461,7 @@ def add_slot():
 
 @app.route("/admin/batch_add_slots", methods=["POST"])
 def batch_add_slots():
-    """後台功能：批量自動生成並新增開放時段範圍"""
+    """後台功能：批量自動生成開放時段（自動略過已存在的重複時段）"""
     if not session.get("admin_logged_in"):
         return jsonify({"status": "error", "message": "權限不足！"})
         
@@ -493,13 +492,17 @@ def batch_add_slots():
 
         while curr_dt <= end_dt:
             formatted_time = f"{curr_dt.month}/{curr_dt.day} {curr_dt.strftime('%H:%M')}"
-            try:
-                cursor.execute("""
-                    INSERT INTO slots (time_str, max_limit, area) VALUES (%s, %s, %s)
-                """, (formatted_time, max_limit, current_admin_area))
+            
+            # 使用 ON CONFLICT (time_str, area) DO NOTHING 略過已存在的時段
+            cursor.execute("""
+                INSERT INTO slots (time_str, max_limit, area) 
+                VALUES (%s, %s, %s)
+                ON CONFLICT (time_str, area) DO NOTHING
+            """, (formatted_time, max_limit, current_admin_area))
+            
+            if cursor.rowcount == 1:
                 success_count += 1
-            except psycopg2.errors.UniqueViolation:
-                conn.rollback()
+            else:
                 skip_count += 1
                 
             curr_dt += timedelta(minutes=interval_mins)
@@ -508,9 +511,9 @@ def batch_add_slots():
         cursor.close()
         conn.close()
 
-        msg = f"🎉 批量上架成功！共成功新增 {success_count} 個時段。"
+        msg = f"🎉 批量上架完成！成功新增 {success_count} 個新時段。"
         if skip_count > 0:
-            msg += f"（有 {skip_count} 個重複時段已自動跳過）"
+            msg += f"（有 {skip_count} 個已存在的時段已自動略過）"
             
         return jsonify({"status": "success", "message": msg})
     except Exception as e:
