@@ -2,84 +2,54 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>分區宿舍檢查預約系統</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分區宿舍檢查預約系統</title>
     <style>
-        :root {
-            --primary-color: #4CAF50;
-            --primary-hover: #45a049;
-            --error-color: #f44336;
-            --warning-bg: #fffbe6;
-            --warning-border: #ffe58f;
-        }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f5f7fa; color: #333; }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #eef2f5; margin: 0; padding: 20px; }
+        .container { max-width: 720px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        h2 { text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 20px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: bold; margin-bottom: 6px; color: #34495e; font-size: 14px; }
+        select, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+        .notice-card { background: #fff8e1; border-left: 4px solid #f39c12; padding: 14px 18px; border-radius: 4px; margin-bottom: 20px; }
+        .notice-card h4 { margin: 0 0 6px 0; color: #d35400; font-size: 15px; }
+        .notice-content { font-size: 13.5px; color: #7f6000; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
         
-        .notice-box { background-color: var(--warning-bg); border: 1px solid var(--warning-border); padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-        .notice-title { font-weight: bold; color: #d46b08; font-size: 1.1em; margin-bottom: 12px; }
-        .notice-list { margin: 0; padding-left: 0; list-style: none; }
-        .notice-list li { margin-bottom: 10px; line-height: 1.5; font-size: 0.95em; color: #595959; }
-        .notice-highlight { color: #cf1322; font-weight: bold; }
-
-        .input-group { margin-bottom: 20px; display: flex; flex-direction: column; }
-        .input-group label { font-weight: bold; margin-bottom: 8px; color: #34495e; }
-        .input-group input, .input-group select { padding: 10px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 1em; }
-        .input-group input:focus, .input-group select:focus { border-color: var(--primary-color); outline: none; }
+        .date-tabs-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; }
+        .date-tab-btn { padding: 8px 14px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; color: #495057; white-space: nowrap; transition: 0.2s; }
+        .date-tab-btn.active { background: #3498db; color: white; border-color: #2980b9; }
         
-        #slots_section { display: none; margin-top: 25px; }
-        .section-title { font-weight: bold; color: #2c3e50; margin-bottom: 15px; font-size: 1.1em; border-left: 4px solid var(--primary-color); padding-left: 10px; }
+        .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .slot-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; position: relative; background: #fff; text-align: center; }
+        .slot-card:hover { border-color: #3498db; transform: translateY(-2px); }
+        .slot-card.selected { border-color: #27ae60; background: #f0fff4; box-shadow: 0 2px 8px rgba(39,174,96,0.15); }
+        .slot-card.disabled { opacity: 0.55; cursor: not-allowed; background: #f8f9fa; border-color: #ddd; transform: none; }
+        .slot-time { font-size: 15px; font-weight: bold; color: #2d3748; margin-bottom: 6px; }
+        .slot-status { font-size: 12px; color: #718096; }
+        .slot-badge-full { color: #e53e3e; font-weight: bold; }
         
-        .date-tabs-container { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; margin-bottom: 15px; background: #f1f3f5; padding: 10px; border-radius: 8px; -webkit-overflow-scrolling: touch; }
-        .date-tab-btn { background: white; border: 1px solid #ccd1d9; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #434a54; white-space: nowrap; }
-        .date-tab-btn.active { background: #434a54; color: white; border-color: #434a54; }
-
-        .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .slot-card { position: relative; background: #f8f9fa; border: 2px solid #e6e9ed; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; user-select: none; }
-        .slot-card input[type="checkbox"] { display: none; }
-        .slot-time { font-size: 1.05em; font-weight: bold; color: #434a54; margin-bottom: 4px; }
-        .slot-count { font-size: 0.85em; color: #a0a0a0; }
-        
-        .slot-card.selected { background: #fff7e6; border-color: #ff9c6e; color: #d4380d; }
-        .slot-card.selected .slot-time { color: #d4380d; }
-        .slot-card.disabled { background: #e6e9ed; border-color: #ccd1d9; color: #95a5a6; cursor: not-allowed; opacity: 0.6; }
-        .slot-card.disabled .slot-time { color: #7f8c8d; text-decoration: line-through; }
-        .slot-badge-full { font-size: 0.75em; background: #7f8c8d; color: white; padding: 2px 6px; border-radius: 10px; display: inline-block; margin-top: 5px; }
-
-        .footer-box { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
-        #count { margin: 0; font-weight: bold; color: #2c3e50; }
-        #submitBtn { background-color: var(--primary-color); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 1em; font-weight: bold; cursor: pointer; }
-        #submitBtn:disabled { background-color: #ccd1d9; cursor: not-allowed; }
+        .footer-box { border-top: 1px solid #edf2f7; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; }
+        #count { font-size: 14px; font-weight: bold; color: #2c3e50; margin: 0; }
+        #submitBtn { padding: 10px 24px; background: #27ae60; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
+        #submitBtn:disabled { background: #bdc3c7; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📋 宿舍檢查時間預約</h2>
+    <h2>🏠 分區宿舍離宿檢查預約</h2>
 
-    <div class="notice-box">
-        <div class="notice-title">⚠️ 離宿辦理重要注意事項（請務必詳閱）</div>
-        <ul class="notice-list">
-            <li>1️⃣ 填寫送出後，<span class="notice-highlight">只能更改一次</span>！</li>
-            <li>2️⃣ 每個人一定要預約三次!</li>
-            <li>3️⃣ 選擇 <span class="notice-highlight">16週</span> 離宿請於 <span class="notice-highlight">5/31(日) 17:00前</span> 填完表單；選擇 <span class="notice-highlight">17或18週</span> 離宿請在 <span class="notice-highlight">6/7(日) 17:00前</span> 填完表單。</li>
-            <li>4️⃣ 填寫時間如樓長不行會私訊您更改時間（這不計算在只能更改一次的限制內）。</li>
-            <li>5️⃣ 離宿最晚時間只到 <span class="notice-highlight">6/28(日) 17:00前</span>。</li>
-            <li>6️⃣ 最早離宿時間是 <span class="notice-highlight">6/8(一) 13:00後</span>。</li>
-            <li>7️⃣ 要趕車、給家長載的同學請提早多留點時間預約檢查。若離宿當天檢查未通過，<span class="notice-highlight">必須打掃至通過才可離開，否則將扣取打掃部分的押金</span>。</li>
-            <li>8️⃣ 請不要當天傳訊息詢問樓長是否可以延遲檢查，一律不接受！（因現場繁忙可能無法即時讀取訊息）。</li>
-            <li>9️⃣ 廁所內部請使用科技海綿清潔（菜瓜布絕對刷不乾淨）。</li>
-            <li>🔟 科技海綿請勿用於房間地板，僅限用於廁所、浴室、洗手台，但請勿用鹽酸及菜瓜布。<br>
-                <span class="notice-highlight">❗ 檢查時淋浴間、廁所、洗手台必須是全乾的 ❗</span>
-            </li>
-        </ul>
+    <!-- 💥 離宿重要注意事項展示框 -->
+    <div class="notice-card">
+        <h4>📢 離宿辦理重要注意事項：</h4>
+        <div id="noticeBox" class="notice-content">請先選擇下方宿舍區域以載入專屬注意事項...</div>
     </div>
 
     <form id="form">
-        <div class="input-group">
-            <label for="area">宿舍區域樓層</label>
-            <select id="area" required onchange="handleAreaChange()">
-                <option value="">-- 請選擇您的宿舍分區 --</option>
+        <div class="form-group">
+            <label for="area">1. 選擇宿舍區域樓層：</label>
+            <select id="area" name="area" required onchange="handleAreaChange()">
+                <option value="">-- 請選擇宿舍區域樓層 --</option>
                 <option value="國際3樓">國際3樓</option>
                 <option value="國際5樓">國際5樓</option>
                 <option value="國際6樓">國際6樓</option>
@@ -87,55 +57,60 @@
                 <option value="國際8樓">國際8樓</option>
             </select>
         </div>
-        
-        <div class="input-group">
-            <label for="student_id">房號床號</label>
-            <select id="student_id" required disabled onchange="handleBedChange()">
+
+        <div class="form-group">
+            <label for="student_id">2. 房號床號：</label>
+            <select id="student_id" name="student_id" required disabled onchange="handleBedChange()">
                 <option value="">-- 請先選擇上方宿舍區域樓層 --</option>
             </select>
         </div>
 
-        <div class="input-group">
-            <label for="name">姓名</label>
-            <input type="text" id="name" placeholder="請輸入您的姓名" required>
+        <div class="form-group">
+            <label for="name">3. 學生姓名：</label>
+            <input type="text" id="name" name="name" placeholder="請輸入姓名" required>
         </div>
 
-        <div class="input-group">
-            <label for="job">公共空間打掃負責區域 (必填)</label>
-            <select id="job" required disabled>
+        <div class="form-group">
+            <label for="job">4. 主要負責打掃空間：</label>
+            <select id="job" name="job" required disabled>
                 <option value="">-- 請先選擇上方房號床號 --</option>
             </select>
         </div>
 
-        <div class="input-group">
-            <label for="job2">第二負責區域 (選填，若寢室不滿 4 人需兼任時填寫)</label>
-            <select id="job2" disabled>
-                <option value="">-- 無 (僅負責上方主要區域) --</option>
+        <div class="form-group">
+            <label for="job2">5. 兼任負責打掃空間（選填）：</label>
+            <select id="job2" name="job2" disabled>
+                <option value="">-- 請先選擇上方房號床號 --</option>
             </select>
         </div>
 
-        <div class="input-group">
-            <label for="note">備註欄 (選填)</label>
-            <input type="text" id="note" placeholder="如有特殊需求可於此填寫">
+        <div class="form-group">
+            <label for="note">6. 備註事項（選填）：</label>
+            <input type="text" id="note" name="note" placeholder="例如：希望與同寢室友排在相近時段">
         </div>
 
-        <div id="slots_section">
-            <div class="section-title">選擇檢查時段 (請剛好挑選 3 個時段)</div>
-            <div class="date-tabs-container" id="date_tabs_bar"></div>
+        <!-- 時段選擇區 -->
+        <div id="slots_section" style="display: none; margin-top: 25px;">
+            <label style="font-size: 15px; margin-bottom: 10px;">7. 請挑選 3 個志願時段（各時段必須分屬不同日期）：</label>
             
+            <div id="date_tabs_bar" class="date-tabs-bar"></div>
+
             <div class="slots-grid">
-                {% for slot in slots_data %}
-                    {% set time_str = slot[0] %}
-                    {% set max_limit = slot[1] %}
-                    {% set slot_area = slot[2] %}
-                    {% set current_count = slot_counts.get(slot_area ~ '_' ~ time_str, 0) %}
-                    {% set is_full = current_count >= max_limit %}
-                    
-                    <div class="slot-card area-{{ slot_area }} {% if is_full %} disabled {% endif %}" 
-                         onclick="toggleCard(this)" data-rawtime="{{ time_str }}" style="display: none;">
-                        <input type="checkbox" class="time" value="{{ time_str }}" {% if is_full %} disabled {% endif %}>
-                        <div class="slot-time js-time-display">{{ time_str }}</div>
-                        <div class="slot-count">
+                {% for row in slots_data %}
+                    {% set row_time = row[0] %}
+                    {% set max_limit = row[1] %}
+                    {% set row_area = row[2] %}
+                    {% set key = row_area ~ '_' ~ row_time %}
+                    {% set current_count = slot_counts[key] if key in slot_counts else 0 %}
+                    {% set is_full = (current_count >= max_limit) %}
+
+                    <div class="slot-card area-{{ row_area }} {% if is_full %}disabled{% endif %}" 
+                         data-rawtime="{{ row_time }}" 
+                         onclick="toggleCard(this)" 
+                         style="display: none;">
+                        <input type="checkbox" class="time" value="{{ row_time }}" style="display: none;" {% if is_full %}disabled{% endif %}>
+                        <div class="slot-time js-time-display">{{ row_time }}</div>
+                        <div class="slot-status">
                             {% if is_full %}
                                 <span class="slot-badge-full">已額滿</span>
                             {% else %}
@@ -155,34 +130,55 @@
 </div>
 
 <script>
+// 💥 動態載入該樓層的注意事項
+function loadAnnouncement(area) {
+    const noticeBox = document.getElementById("noticeBox");
+    if (!area) {
+        noticeBox.innerText = "請先選擇下方宿舍區域以載入專屬注意事項...";
+        return;
+    }
+    fetch(`/get_announcement?area=${encodeURIComponent(area)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.content) {
+                noticeBox.innerText = data.content;
+            } else {
+                noticeBox.innerText = "目前此樓層無特別注意事項。";
+            }
+        })
+        .catch(err => {
+            console.error("載入注意事項失敗:", err);
+            noticeBox.innerText = "1. 請確實清空個人物品與寢室垃圾。\n2. 離宿前請將個人負責打掃空間清理乾淨。\n3. 請準時於寢室等候幹部檢查。";
+        });
+}
+
 function handleAreaChange() {
     const areaSelect = document.getElementById("area");
     const bedSelect = document.getElementById("student_id");
     const jobSelect = document.getElementById("job");
     const job2Select = document.getElementById("job2");
-    const selectedArea = areaSelect.value; // 🚀 確實宣告變了
+    const selectedArea = areaSelect.value;
     
+    // 💥 樓層改變時同步載入專屬注意事項
+    loadAnnouncement(selectedArea);
+
     filterSlots();
     
-    // 先重設打掃區域選單
     jobSelect.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
     jobSelect.disabled = true;
     job2Select.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
     job2Select.disabled = true;
 
-    // 🚀 安全檢查：如果沒選區域，直接鎖定房號並返回，絕不往下亂跑
     if (!selectedArea) {
         bedSelect.innerHTML = '<option value="">-- 請先選擇上方宿舍區域樓層 --</option>';
         bedSelect.disabled = true;
         return;
     }
     
-    // 提取樓層數字
     const floorMatch = selectedArea.match(/\d+/);
     if (!floorMatch) return;
     const floorNum = floorMatch[0];
     
-    // 發送請求取得已被預約的床位
     fetch("/get_occupied_beds?area=" + encodeURIComponent(selectedArea))
     .then(r => {
         if (!r.ok) throw new Error(`HTTP 錯誤: ${r.status}`);
@@ -192,7 +188,6 @@ function handleAreaChange() {
         const occupiedBeds = data && data.occupied ? data.occupied : []; 
         let htmlStr = '<option value="">-- 請選擇您的房號床號 --</option>';
         
-        // 生成該樓層的 12 間房、各 4 個床位
         for (let r = 1; r <= 12; r++) {
             let roomNo = `${floorNum}${String(r).padStart(2, '0')}`; 
             ['A', 'B', 'C', 'D'].forEach(letter => {
@@ -219,7 +214,6 @@ function handleAreaChange() {
     });
 }
 
-// 🚀 同步渲染與鎖定第一、第二工作選單
 function handleBedChange() {
     const areaVal = document.getElementById("area").value;
     const bedVal = document.getElementById("student_id").value; 
@@ -240,7 +234,6 @@ function handleBedChange() {
         const occupiedJobs = data.occupied_jobs || []; 
         const allJobs = ['房間內外', '洗手台', '廁所', '淋浴間'];
         
-        // 渲染主要選單
         let htmlStr = '<option value="">-- 請選擇您負責的打掃區域 --</option>';
         allJobs.forEach(job => {
             if (occupiedJobs.includes(job)) {
@@ -252,7 +245,6 @@ function handleBedChange() {
         jobSelect.innerHTML = htmlStr;
         jobSelect.disabled = false;
 
-        // 渲染兼任選單
         let htmlStr2 = '<option value="">-- 無 (僅負責上方主要區域) --</option>';
         allJobs.forEach(job => {
             if (occupiedJobs.includes(job)) {
@@ -347,7 +339,6 @@ function updateCount() {
     document.getElementById("submitBtn").disabled = (count !== 3);
 }
 
-// 🚀 表單送出：合併打掃區域與 3 個時段嚴格時間差判定
 document.getElementById("form").addEventListener("submit", function(e){
     e.preventDefault();
     let areaVal = document.getElementById("area").value;
@@ -367,7 +358,6 @@ document.getElementById("form").addEventListener("submit", function(e){
         alert("❌ 基本欄位未填寫完整！"); return;
     }
 
-    // 🚀 第一負責與第二負責防呆與合併
     let finalJob = jobVal;
     if (job2Val && job2Val !== jobVal) {
         finalJob = `${jobVal} + ${job2Val}`;
