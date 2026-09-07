@@ -48,7 +48,20 @@ def init_db():
         )
     """)
 
-    # 3. 💥 建立離宿注意事項/公告資料表
+    # 自動升級：為 records 表檢查並補上 status 欄位
+    cursor.execute("""
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='records' AND column_name='status'
+            ) THEN 
+                ALTER TABLE records ADD COLUMN status TEXT DEFAULT '未檢查'; 
+            END IF; 
+        END $$;
+    """)
+
+    # 3. 建立離宿注意事項/公告資料表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS announcements (
             area TEXT PRIMARY KEY,
@@ -60,7 +73,6 @@ def init_db():
     cursor.close()
     conn.close()
 
-# 啟動時立刻外連雲端初始化
 init_db()
 
 # ----------------- 🎯 前台學生預約路由 -----------------
@@ -144,7 +156,6 @@ def get_occupied_beds():
             return jsonify({"occupied": occupied_beds, "occupied_jobs": []})
             
     except Exception as e:
-        print(f"❌ 雲端資料庫查詢發生異常: {str(e)}")
         return jsonify({"occupied": [], "occupied_jobs": [], "error": str(e)})
 
 @app.route("/submit", methods=["POST"])
@@ -158,11 +169,9 @@ def submit():
     times = data.get("times", [])
     note = data.get("note", "")
 
-    # 1. 基本完整性檢查
     if not area or not student_id or not name or not job or len(times) != 3:
         return jsonify({"status": "error", "message": "❌ 資料填寫不完整，請重新確認！"})
 
-    # 2. 檢查 3 個時段是否在同一天
     dates = []
     for t in times:
         if not t:
@@ -173,14 +182,13 @@ def submit():
     if len(set(dates)) < 3:
         return jsonify({"status": "error", "message": "❌ 規定：優先時段 1、2、3 必須分屬不同天，不可選擇同一天的時段！"})
 
-    # 3. 檢查通過後寫入資料庫
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO records (student_id, name, job, time1, time2, time3, note, area)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO records (student_id, name, job, time1, time2, time3, note, area, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '未檢查')
         """, (student_id, name, job, times[0], times[1], times[2], note, area))
         
         conn.commit()
@@ -249,7 +257,7 @@ def admin_dashboard():
     slots_data = [list(row) for row in cursor.fetchall()]
     
     cursor.execute("""
-        SELECT id, student_id, name, job, time1, time2, time3, note 
+        SELECT id, student_id, name, job, time1, time2, time3, note, COALESCE(status, '未檢查') as status
         FROM records 
         WHERE area = %s 
         ORDER BY student_id ASC
@@ -266,15 +274,67 @@ def admin_dashboard():
                 key = f"{area_val}_{t}"
                 slot_counts[key] = slot_counts.get(key, 0) + 1
 
-    # 💥 讀取當前樓層的注意事項
     cursor.execute("SELECT content FROM announcements WHERE area = %s", (current_admin_area,))
     ann_row = cursor.fetchone()
     default_text = "1. 請確實清空個人物品與寢室垃圾。\n2. 離宿前請將個人負責打掃空間清理乾淨。\n3. 請於預約時段準時於寢室等候幹部檢查。"
     announcement_content = ann_row["content"] if ann_row and ann_row["content"] else default_text
+
+    # 聚合行事曆資料：按開放時段整理出有哪些同學預約
+    schedule_data = {}
+    for slot in slots_data:
+        if slot[2] == current_admin_area:
+            schedule_data[slot[0]] = []
+
+    for r in records:
+        student_info = {
+            "student_id": r["student_id"],
+            "name": r["name"],
+            "job": r["job"],
+            "status": r["status"]
+        }
+        for idx, t in enumerate([r["time1"], r["time2"], r["time3"]], start=1):
+            if t in schedule_data:
+                schedule_data[t].append({**student_info, "priority": idx})
                 
     cursor.close()
     conn.close()
-    return render_template("admin.html", slots_data=slots_data, slot_counts=slot_counts, records=records, announcement_content=announcement_content)
+    return render_template(
+        "admin.html", 
+        slots_data=slots_data, 
+        slot_counts=slot_counts, 
+        records=records, 
+        announcement_content=announcement_content,
+        schedule_data=schedule_data
+    )
+
+@app.route("/admin/update_status", methods=["POST"])
+def update_status():
+    """後台功能：即時更新檢查狀態"""
+    if not session.get("admin_logged_in"):
+        return jsonify({"status": "error", "message": "權限不足！"})
+        
+    data = request.get_json()
+    student_id = data.get("student_id")
+    new_status = data.get("status")
+    current_admin_area = session.get("admin_area")
+
+    if not student_id or not new_status:
+        return jsonify({"status": "error", "message": "參數不完整！"})
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE records 
+            SET status = %s 
+            WHERE area = %s AND student_id = %s
+        """, (new_status, current_admin_area, student_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"status": "success", "message": f"狀態已更新為：{new_status}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 @app.route("/admin/update_announcement", methods=["POST"])
 def update_announcement():
@@ -335,14 +395,14 @@ def export_csv():
         
         if target_area:
             cursor.execute("""
-                SELECT area, student_id, name, job, time1, time2, time3, note 
+                SELECT area, student_id, name, job, time1, time2, time3, note, COALESCE(status, '未檢查') 
                 FROM records 
                 WHERE area = %s
                 ORDER BY student_id ASC
             """, (target_area,))
         else:
             cursor.execute("""
-                SELECT area, student_id, name, job, time1, time2, time3, note 
+                SELECT area, student_id, name, job, time1, time2, time3, note, COALESCE(status, '未檢查') 
                 FROM records 
                 ORDER BY area ASC, student_id ASC
             """)
@@ -353,7 +413,7 @@ def export_csv():
 
         si = StringIO()
         cw = csv.writer(si)
-        cw.writerow(["管理樓層", "房號床位", "學生姓名", "負責工作", "優先時段1", "優先時段2", "優先時段3", "備註事項"])
+        cw.writerow(["管理樓層", "房號床位", "學生姓名", "負責工作", "優先時段1", "優先時段2", "優先時段3", "備註事項", "檢查進度"])
         
         for r in records:
             cw.writerow([
@@ -361,7 +421,7 @@ def export_csv():
                 f" {r[4]}" if r[4] else "",
                 f" {r[5]}" if r[5] else "",
                 f" {r[6]}" if r[6] else "",
-                r[7]
+                r[7], r[8]
             ])
 
         csv_data = "\ufeff" + si.getvalue()
