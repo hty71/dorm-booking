@@ -44,10 +44,6 @@
         .modal-header h3 { margin: 0; font-size: 18px; color: #2c3e50; }
         .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
         .query-result-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-top: 15px; display: none; font-size: 14px; line-height: 1.8; }
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
-        .status-badge-pending { background: #fff3cd; color: #856404; }
-        .status-badge-passed { background: #d4edda; color: #155724; }
-        .status-badge-recheck { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -150,13 +146,13 @@
 <div id="queryModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
-            <h3>🔍 查詢離宿預約與進度</h3>
+            <h3>🔍 查詢離宿預約紀錄</h3>
             <button type="button" class="modal-close" onclick="closeQueryModal()">×</button>
         </div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
             <div>
                 <label style="font-size: 13px;">宿舍樓層：</label>
-                <select id="query_area">
+                <select id="query_area" onchange="handleQueryAreaChange()">
                     <option value="國際3樓">國際3樓</option>
                     <option value="國際5樓">國際5樓</option>
                     <option value="國際6樓">國際6樓</option>
@@ -165,8 +161,10 @@
                 </select>
             </div>
             <div>
-                <label style="font-size: 13px;">房號床位（例如：301A）：</label>
-                <input type="text" id="query_bed" placeholder="請輸入房號床位" style="text-transform: uppercase;">
+                <label style="font-size: 13px;">房號床位：</label>
+                <select id="query_bed">
+                    <option value="">-- 請先選擇上方樓層 --</option>
+                </select>
             </div>
             <button type="button" class="btn-query" onclick="doQueryBooking()" style="padding: 10px; width: 100%;">送出查詢</button>
         </div>
@@ -179,19 +177,38 @@
 function openQueryModal() {
     document.getElementById("queryModal").style.display = "flex";
     document.getElementById("queryResultBox").style.display = "none";
+    handleQueryAreaChange();
 }
 
 function closeQueryModal() {
     document.getElementById("queryModal").style.display = "none";
 }
 
+// 彈窗內依據選取的樓層動態生成房號床位下拉選單
+function handleQueryAreaChange() {
+    const area = document.getElementById("query_area").value;
+    const bedSelect = document.getElementById("query_bed");
+    const floorMatch = area.match(/\d+/);
+    if (!floorMatch) return;
+    const floorNum = floorMatch[0];
+
+    let htmlStr = '<option value="">-- 請選擇房號床位 --</option>';
+    for (let r = 1; r <= 12; r++) {
+        let roomNo = `${floorNum}${String(r).padStart(2, '0')}`;
+        ['A', 'B', 'C', 'D'].forEach(letter => {
+            htmlStr += `<option value="${roomNo}${letter}">${roomNo}${letter} 床位</option>`;
+        });
+    }
+    bedSelect.innerHTML = htmlStr;
+}
+
 function doQueryBooking() {
     const area = document.getElementById("query_area").value;
-    const bed = document.getElementById("query_bed").value.trim().toUpperCase();
+    const bed = document.getElementById("query_bed").value.trim();
     const resultBox = document.getElementById("queryResultBox");
 
     if (!bed) {
-        alert("請輸入房號床位！");
+        alert("請選擇房號床位！");
         return;
     }
 
@@ -205,15 +222,10 @@ function doQueryBooking() {
         resultBox.style.display = "block";
         if (res.status === "success") {
             const d = res.data;
-            let badgeClass = "status-badge-pending";
-            if (d.check_status === "合格") badgeClass = "status-badge-passed";
-            if (d.check_status === "待複檢") badgeClass = "status-badge-recheck";
-
             resultBox.innerHTML = `
                 <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
                     <b>學生姓名：</b>${d.name} (${d.student_id})<br>
-                    <b>打掃區域：</b>${d.job}<br>
-                    <b>目前進度：</b><span class="status-badge ${badgeClass}">${d.check_status}</span>
+                    <b>打掃區域：</b>${d.job}
                 </div>
                 <div>
                     <b>第1次檢查：</b>${d.time1}<br>
