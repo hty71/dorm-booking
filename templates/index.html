@@ -39,7 +39,6 @@
 <div class="container">
     <h2>🏠 分區宿舍離宿檢查預約</h2>
 
-    <!-- 💥 離宿重要注意事項展示框 -->
     <div class="notice-card">
         <h4>📢 離宿辦理重要注意事項：</h4>
         <div id="noticeBox" class="notice-content">請先選擇下方宿舍區域以載入專屬注意事項...</div>
@@ -86,12 +85,11 @@
 
         <div class="form-group">
             <label for="note">6. 備註事項（選填）：</label>
-            <input type="text" id="note" name="note" placeholder="例如：希望與同寢室友排在相近時段">
+            <input type="text" id="note" name="note">
         </div>
 
-        <!-- 時段選擇區 -->
         <div id="slots_section" style="display: none; margin-top: 25px;">
-            <label style="font-size: 15px; margin-bottom: 10px;">7. 請挑選 3 個志願時段（各時段必須分屬不同日期）：</label>
+            <label style="font-size: 15px; margin-bottom: 10px;">7. 請挑選「第1、2次檢查及離宿檢查」共 3 個時段（各時段必須分屬不同日期）：</label>
             
             <div id="date_tabs_bar" class="date-tabs-bar"></div>
 
@@ -122,7 +120,7 @@
             </div>
             
             <div class="footer-box">
-                <p id="count">已選擇：0 / 3 個時段</p>
+                <p id="count">已選擇：0 / 3 個檢查時段</p>
                 <button type="submit" id="submitBtn" disabled>確認送出預約</button>
             </div>
         </div>
@@ -130,7 +128,6 @@
 </div>
 
 <script>
-// 💥 動態載入該樓層的注意事項
 function loadAnnouncement(area) {
     const noticeBox = document.getElementById("noticeBox");
     if (!area) {
@@ -159,9 +156,7 @@ function handleAreaChange() {
     const job2Select = document.getElementById("job2");
     const selectedArea = areaSelect.value;
     
-    // 💥 樓層改變時同步載入專屬注意事項
     loadAnnouncement(selectedArea);
-
     filterSlots();
     
     jobSelect.innerHTML = '<option value="">-- 請先選擇上方房號床號 --</option>';
@@ -335,7 +330,7 @@ function filterSlots() {
 function updateCount() {
     let count = 0;
     document.querySelectorAll(".time").forEach(cb => { if (cb.checked) count++; });
-    document.getElementById("count").innerText = `已選擇：${count} / 3 個時段`;
+    document.getElementById("count").innerText = `已選擇：${count} / 3 個檢查時段`;
     document.getElementById("submitBtn").disabled = (count !== 3);
 }
 
@@ -378,10 +373,10 @@ document.getElementById("form").addEventListener("submit", function(e){
     const oneDayMs = 24 * 60 * 60 * 1000;
 
     if ((dateObjects[2] - dateObjects[0]) > 7 * oneDayMs) {
-        alert("❌ 第一次檢查時間必須在第三次的前一週（7天）內。"); return;
+        alert("❌ 第1次檢查時間必須在離宿檢查的前一週（7天）內。"); return;
     }
     if ((dateObjects[2] - dateObjects[1]) > 2 * oneDayMs) {
-        alert("❌ 第二次檢查時間必須在第三次的前兩天（2天）內。"); return;
+        alert("❌ 第2次檢查時間必須在離宿檢查的前兩天（2天）內。"); return;
     }
 
     let sortedTimes = dateObjects.map(d => {

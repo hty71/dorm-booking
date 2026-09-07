@@ -83,7 +83,9 @@
                         {% for st in st_list %}
                         <div style="display: flex; align-items: center; gap: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 20px; font-size: 13px;">
                             <span style="font-weight: bold; color: #0f172a;">{{ st.student_id }} {{ st.name }}</span>
-                            <span style="font-size: 11px; color: #475569; background: #e2e8f0; padding: 1px 5px; border-radius: 10px;">志願{{ st.priority }}</span>
+                            <span style="font-size: 11px; color: #475569; background: #e2e8f0; padding: 1px 5px; border-radius: 10px;">
+                                {% if st.priority == 1 %}第1次檢查{% elif st.priority == 2 %}第2次檢查{% else %}離宿檢查{% endif %}
+                            </span>
                             <span style="font-size: 11px; color: #d97706;">{{ st.job }}</span>
                             <select class="status-select {% if st.status == '合格' %}status-passed{% elif st.status == '待複檢' %}status-recheck{% else %}status-pending{% endif %}" 
                                     style="padding: 2px 5px; font-size: 11px; margin-left: 4px;"
@@ -130,7 +132,7 @@
         <button class="btn btn-green" onclick="addSlot()">儲存單一時段</button>
     </div>
 
-    <!-- 批量產生時段（分鐘限制為 00, 15, 30, 45） -->
+    <!-- 批量產生時段（分鐘限制為 00, 15, 30, 45；預設 12:00 ~ 13:00） -->
     <div style="background: #eef7ed; border: 1px solid #c3e6cb; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
         <h4 style="margin-top: 0; margin-bottom: 10px; color: #1e5631;">🤖 智慧批量自動產生時段</h4>
         <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
@@ -139,13 +141,13 @@
                 <input type="date" id="batch_date">
             </div>
 
-            <!-- 開始時間下拉選單 -->
+            <!-- 開始時間下拉選單（預設 12:00） -->
             <div>
                 <label>開始時間：</label>
                 <select id="batch_start_hour">
                     {% for h in range(7, 23) %}
                         {% set h_str = "%02d" | format(h) %}
-                        <option value="{{ h_str }}" {% if h_str == '14' %}selected{% endif %}>{{ h_str }} 點</option>
+                        <option value="{{ h_str }}" {% if h_str == '12' %}selected{% endif %}>{{ h_str }} 點</option>
                     {% endfor %}
                 </select>
                 <select id="batch_start_minute">
@@ -156,13 +158,13 @@
                 </select>
             </div>
 
-            <!-- 結束時間下拉選單 -->
+            <!-- 結束時間下拉選單（預設 13:00） -->
             <div>
                 <label>結束時間：</label>
                 <select id="batch_end_hour">
                     {% for h in range(7, 23) %}
                         {% set h_str = "%02d" | format(h) %}
-                        <option value="{{ h_str }}" {% if h_str == '17' %}selected{% endif %}>{{ h_str }} 點</option>
+                        <option value="{{ h_str }}" {% if h_str == '13' %}selected{% endif %}>{{ h_str }} 點</option>
                     {% endfor %}
                 </select>
                 <select id="batch_end_minute">
@@ -259,9 +261,9 @@
                 <th style="width: 90px;">房號床位</th>
                 <th style="width: 90px;">姓名</th>
                 <th style="width: 140px; color: #d63031;">負責打掃空間</th>
-                <th>時段(1)</th>
-                <th>時段(2)</th>
-                <th>時段(3)</th>
+                <th>第1次檢查</th>
+                <th>第2次檢查</th>
+                <th>離宿檢查</th>
                 <th>學生備註</th>
                 <th style="width: 110px;">檢查狀態</th>
                 <th style="width: 60px;">操作</th>
@@ -518,4 +520,3 @@
     window.addEventListener("DOMContentLoaded", initAdminScheduleTabs);
 </script>
 </body>
-</html>
